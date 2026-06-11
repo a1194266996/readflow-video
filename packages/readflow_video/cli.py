@@ -12,12 +12,15 @@ def main() -> None:
     parser.add_argument("--scene-count", type=int, default=6)
     parser.add_argument("--no-tts", action="store_true")
     parser.add_argument("--static", action="store_true", help="Render static cards instead of animated scenes.")
-    parser.add_argument("--ai-engine", choices=["template", "svd"], default="template")
+    parser.add_argument("--ai-engine", choices=["template", "svd", "wan"], default="template")
     parser.add_argument("--character", default="presenter")
     parser.add_argument("--no-karaoke", action="store_true")
     args = parser.parse_args()
 
     project = generate_script(args.prompt, scene_count=args.scene_count)
+    if args.ai_engine == "wan" and project.scenes:
+        project.scenes = project.scenes[:1]
+        project.scenes[0].duration = min(6.0, max(4.0, project.scenes[0].duration))
     result = render_project(
         project,
         RenderOptions(

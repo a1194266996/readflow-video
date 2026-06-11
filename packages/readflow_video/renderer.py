@@ -9,7 +9,7 @@ from typing import Any, Callable
 
 from PIL import Image, ImageDraw, ImageFont
 
-from .ai_video import render_svd_segment
+from .ai_video import render_svd_segment, render_wan_segment
 from .schemas import VideoProject
 from .tts import synthesize_voice
 
@@ -408,6 +408,51 @@ def _render_svd_segment(project: VideoProject, scene_index: int, work_dir: Path,
     return result
 
 
+def _wan_prompt(project: VideoProject, scene_index: int) -> str:
+    scene = project.scenes[scene_index]
+    subject = project.prompt.strip()
+    story = f"{scene.title}。{scene.body}".strip("。")
+    return (
+        f"{subject}。{story}。"
+        "vertical 9:16 cinematic animated short video, expressive character action, "
+        "clear subject, dynamic camera movement, smooth motion, detailed scene, "
+        "high quality, no text on screen"
+    )
+
+
+def _render_wan_segment(project: VideoProject, scene_index: int, work_dir: Path, options: RenderOptions) -> Path:
+    scene = project.scenes[scene_index]
+    if options.progress_callback:
+        preview = _render_animation_frame(project, scene_index, 0.52, options)
+        preview_path = work_dir / f"wan_preview_{scene.index:02d}.png"
+        preview.save(preview_path)
+        options.progress_callback(
+            {
+                "stage": "wan_prompt",
+                "scene_index": scene.index,
+                "message": f"Wan2.2 正在生成第 {scene.index} 个动画镜头",
+                "preview_path": preview_path,
+            }
+        )
+    segment_path = work_dir / f"segment_{scene.index:02d}.mp4"
+    result = render_wan_segment(
+        prompt=_wan_prompt(project, scene_index),
+        output_path=segment_path,
+        duration=scene.duration,
+        seed=scene.index * 17713,
+    )
+    if options.progress_callback:
+        options.progress_callback(
+            {
+                "stage": "segment",
+                "scene_index": scene.index,
+                "message": f"Wan2.2 已完成第 {scene.index} 个动画镜头",
+                "preview_path": result,
+            }
+        )
+    return result
+
+
 def _render_static_segment(project: VideoProject, scene_index: int, work_dir: Path) -> Path:
     scene = project.scenes[scene_index]
     image_path = _render_scene_card(project, scene_index, work_dir)
@@ -473,7 +518,9 @@ def render_project(project: VideoProject, options: RenderOptions) -> RenderResul
                     "message": f"正在生成第 {i + 1}/{len(project.scenes)} 个分镜",
                 }
             )
-        if options.ai_engine == "svd":
+        if options.ai_engine == "wan":
+            scene_videos.append(_render_wan_segment(project, i, work_dir, options))
+        elif options.ai_engine == "svd":
             scene_videos.append(_render_svd_segment(project, i, work_dir, options))
         elif options.animated:
             scene_videos.append(_render_animated_segment(project, i, work_dir, options))

@@ -194,7 +194,10 @@ def render_video(request: RenderRequest):
         scene_count=request.scene_count,
         style=request.style,
     )
-    if request.ai_engine == "svd" and len(project.scenes) > 3:
+    if request.ai_engine == "wan" and project.scenes:
+        project.scenes = project.scenes[:1]
+        project.scenes[0].duration = min(6.0, max(4.0, project.scenes[0].duration))
+    elif request.ai_engine == "svd" and len(project.scenes) > 3:
         project.scenes = project.scenes[:3]
     job_id = uuid4().hex
     job = {

@@ -72,7 +72,7 @@ function App() {
   const [busy, setBusy] = useState(false);
   const [character, setCharacter] = useState("presenter");
   const [karaoke, setKaraoke] = useState(true);
-  const [aiEngine, setAiEngine] = useState("svd");
+  const [aiEngine, setAiEngine] = useState("wan");
   const [aiStatus, setAiStatus] = useState<AiStatus | null>(null);
   const [systemStatus, setSystemStatus] = useState<SystemStatus | null>(null);
   const [jobs, setJobs] = useState<RenderJob[]>([]);
@@ -118,7 +118,7 @@ function App() {
   async function generateScript() {
     setBusy(true);
     try {
-      const sceneCount = aiEngine === "svd" ? 3 : 6;
+      const sceneCount = aiEngine === "wan" ? 3 : aiEngine === "svd" ? 3 : 6;
       const res = await fetch(`${API}/api/script`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -133,7 +133,9 @@ function App() {
   async function renderVideo() {
     setBusy(true);
     try {
-      const renderProject = aiEngine === "svd" && project
+      const renderProject = aiEngine === "wan" && project
+        ? { ...project, scenes: project.scenes.slice(0, 1) }
+        : aiEngine === "svd" && project
         ? { ...project, scenes: project.scenes.slice(0, 3) }
         : project;
       const res = await fetch(`${API}/api/render`, {
@@ -142,7 +144,7 @@ function App() {
         body: JSON.stringify({
           prompt,
           project: renderProject,
-          scene_count: aiEngine === "svd" ? 3 : 6,
+          scene_count: aiEngine === "wan" ? 3 : aiEngine === "svd" ? 3 : 6,
           with_tts: true,
           animated: true,
           ai_engine: aiEngine,
@@ -170,12 +172,13 @@ function App() {
               视频引擎
               <select value={aiEngine} onChange={(event) => setAiEngine(event.target.value)}>
                 <option value="template">模板动画</option>
+                <option value="wan">Wan2.2 文生视频</option>
                 <option value="svd">SVD 图生视频</option>
               </select>
             </label>
-            {aiEngine === "svd" && aiStatus && (
+            {(aiEngine === "wan" || aiEngine === "svd") && aiStatus && (
               <div className={aiStatus.ready ? "status ready" : "status"}>
-                {aiStatus.ready ? `SVD 就绪：${aiStatus.device}` : `SVD 未就绪：${aiStatus.reason}`}
+                {aiStatus.ready ? `${aiEngine.toUpperCase()} 就绪：${aiStatus.device}` : `${aiEngine.toUpperCase()} 未就绪：${aiStatus.reason}`}
               </div>
             )}
             <label>
