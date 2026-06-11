@@ -45,6 +45,15 @@ uvicorn apps.api.main:app --host 0.0.0.0 --port 8010
 
 Open `http://localhost:8010/docs` for API docs.
 
+The web app automatically connects to the API on the same host:
+
+```text
+http://<current-browser-host>:8010
+```
+
+For example, opening `http://SERVER_IP:5173` will call `http://SERVER_IP:8010`.
+Set `VITE_API_URL` only when the API is intentionally hosted somewhere else.
+
 ## Optional AI Video Engine
 
 The `svd` engine uses Stable Video Diffusion XT 1.1 as an image-to-video step.

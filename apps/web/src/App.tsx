@@ -3,7 +3,15 @@ import { FileText, Play, RefreshCw, WandSparkles } from "lucide-react";
 import { createRoot } from "react-dom/client";
 import "./styles.css";
 
-const API = import.meta.env.VITE_API_URL || "http://172.16.10.165:8010";
+function getApiBaseUrl() {
+  const configured = import.meta.env.VITE_API_URL;
+  if (configured) {
+    return configured;
+  }
+  return `${window.location.protocol}//${window.location.hostname}:8010`;
+}
+
+const API = getApiBaseUrl();
 
 type Scene = {
   index: number;
