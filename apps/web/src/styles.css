@@ -90,6 +90,22 @@ select {
   height: 18px;
 }
 
+.status {
+  border: 1px solid #d9a441;
+  border-radius: 8px;
+  background: #fff8e1;
+  color: #7c4a03;
+  padding: 10px 12px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.status.ready {
+  border-color: #047857;
+  background: #ecfdf5;
+  color: #065f46;
+}
+
 .actions {
   display: grid;
   grid-template-columns: 1fr 1fr;

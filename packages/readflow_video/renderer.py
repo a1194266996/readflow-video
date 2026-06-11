@@ -8,6 +8,7 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont
 
+from .ai_video import render_svd_segment
 from .schemas import VideoProject
 from .tts import synthesize_voice
 
@@ -22,6 +23,7 @@ class RenderOptions:
     voice: str = "zh-CN-XiaoxiaoNeural"
     with_tts: bool = True
     animated: bool = True
+    ai_engine: str = "template"
     visual_style: str = "story"
     character: str = "presenter"
     karaoke: bool = True
@@ -371,6 +373,20 @@ def _render_animated_segment(project: VideoProject, scene_index: int, work_dir: 
     return segment_path
 
 
+def _render_svd_segment(project: VideoProject, scene_index: int, work_dir: Path, options: RenderOptions) -> Path:
+    scene = project.scenes[scene_index]
+    keyframe = _render_animation_frame(project, scene_index, 0.52, options)
+    keyframe_path = work_dir / f"svd_keyframe_{scene.index:02d}.png"
+    keyframe.save(keyframe_path)
+    segment_path = work_dir / f"segment_{scene.index:02d}.mp4"
+    return render_svd_segment(
+        keyframe_path=keyframe_path,
+        output_path=segment_path,
+        duration=scene.duration,
+        seed=scene.index * 9973,
+    )
+
+
 def _render_static_segment(project: VideoProject, scene_index: int, work_dir: Path) -> Path:
     scene = project.scenes[scene_index]
     image_path = _render_scene_card(project, scene_index, work_dir)
@@ -420,7 +436,7 @@ def render_project(project: VideoProject, options: RenderOptions) -> RenderResul
     options.output_dir.mkdir(parents=True, exist_ok=True)
     render_signature = (
         project.model_dump_json()
-        + f"|animated={options.animated}|style={options.visual_style}|character={options.character}|karaoke={options.karaoke}"
+        + f"|animated={options.animated}|engine={options.ai_engine}|style={options.visual_style}|character={options.character}|karaoke={options.karaoke}"
     )
     digest = hashlib.sha1(render_signature.encode("utf-8")).hexdigest()[:10]
     work_dir = options.output_dir / f"work-{digest}"
@@ -428,7 +444,9 @@ def render_project(project: VideoProject, options: RenderOptions) -> RenderResul
 
     scene_videos: list[Path] = []
     for i, _scene in enumerate(project.scenes):
-        if options.animated:
+        if options.ai_engine == "svd":
+            scene_videos.append(_render_svd_segment(project, i, work_dir, options))
+        elif options.animated:
             scene_videos.append(_render_animated_segment(project, i, work_dir, options))
         else:
             scene_videos.append(_render_static_segment(project, i, work_dir))

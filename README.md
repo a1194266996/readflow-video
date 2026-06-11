@@ -8,6 +8,7 @@ The first version focuses on a reliable local workflow:
 - Render 1080x1920 animated reading scenes
 - Draw a simple speaking character and topic illustration
 - Add camera pan/zoom and karaoke-style subtitle highlighting
+- Optional Stable Video Diffusion image-to-video engine
 - Generate voice-over with Edge TTS when available
 - Fall back to silent audio for offline smoke tests
 - Export an animated MP4 with FFmpeg
@@ -43,6 +44,38 @@ uvicorn apps.api.main:app --host 0.0.0.0 --port 8010
 ```
 
 Open `http://localhost:8010/docs` for API docs.
+
+## Optional AI Video Engine
+
+The `svd` engine uses Stable Video Diffusion XT 1.1 as an image-to-video step.
+It is optional because the model is large and requires a working CUDA GPU.
+
+```bash
+cd /data/work/AI/readflow-video
+source .venv/bin/activate
+pip install -r apps/api/requirements-ai.txt
+python -m readflow_video.cli --ai-engine svd --no-tts "普通人如何提高行动力"
+```
+
+Default model:
+
+```text
+stabilityai/stable-video-diffusion-img2vid-xt-1-1
+```
+
+Override it with:
+
+```bash
+export READFLOW_SVD_MODEL=stabilityai/stable-video-diffusion-img2vid-xt-1-1
+```
+
+The app defaults to the Hugging Face mirror endpoint:
+
+```bash
+export HF_ENDPOINT=https://hf-mirror.com
+```
+
+If CUDA is unavailable, use the default `template` engine until the NVIDIA driver is fixed.
 
 ## Frontend
 

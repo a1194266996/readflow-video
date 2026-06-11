@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { FileText, Play, WandSparkles } from "lucide-react";
 import { createRoot } from "react-dom/client";
 import "./styles.css";
@@ -19,6 +19,13 @@ type Project = {
   scenes: Scene[];
 };
 
+type AiStatus = {
+  ready: boolean;
+  model: string;
+  reason?: string;
+  device?: string | null;
+};
+
 function App() {
   const [prompt, setPrompt] = useState("30岁以后一定要明白的5个人生道理");
   const [project, setProject] = useState<Project | null>(null);
@@ -26,15 +33,25 @@ function App() {
   const [busy, setBusy] = useState(false);
   const [character, setCharacter] = useState("presenter");
   const [karaoke, setKaraoke] = useState(true);
+  const [aiEngine, setAiEngine] = useState("template");
+  const [aiStatus, setAiStatus] = useState<AiStatus | null>(null);
+
+  useEffect(() => {
+    fetch(`${API}/api/ai/status`)
+      .then((res) => res.json())
+      .then(setAiStatus)
+      .catch(() => setAiStatus(null));
+  }, []);
 
   async function generateScript() {
     setBusy(true);
     setVideoUrl("");
     try {
+      const sceneCount = aiEngine === "svd" ? 3 : 6;
       const res = await fetch(`${API}/api/script`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt, scene_count: 6, style: "小红书干货" }),
+        body: JSON.stringify({ prompt, scene_count: sceneCount, style: "小红书干货" }),
       });
       setProject(await res.json());
     } finally {
@@ -45,14 +62,19 @@ function App() {
   async function renderVideo() {
     setBusy(true);
     try {
+      const renderProject = aiEngine === "svd" && project
+        ? { ...project, scenes: project.scenes.slice(0, 3) }
+        : project;
       const res = await fetch(`${API}/api/render`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           prompt,
-          project,
+          project: renderProject,
+          scene_count: aiEngine === "svd" ? 3 : 6,
           with_tts: true,
           animated: true,
+          ai_engine: aiEngine,
           character,
           karaoke,
           visual_style: "story",
@@ -73,6 +95,18 @@ function App() {
           <div className="brand">Readflow Video</div>
           <textarea value={prompt} onChange={(event) => setPrompt(event.target.value)} />
           <div className="controls">
+            <label>
+              视频引擎
+              <select value={aiEngine} onChange={(event) => setAiEngine(event.target.value)}>
+                <option value="template">模板动画</option>
+                <option value="svd">SVD 图生视频</option>
+              </select>
+            </label>
+            {aiEngine === "svd" && aiStatus && (
+              <div className={aiStatus.ready ? "status ready" : "status"}>
+                {aiStatus.ready ? `SVD 就绪：${aiStatus.device}` : `SVD 未就绪：${aiStatus.reason}`}
+              </div>
+            )}
             <label>
               角色
               <select value={character} onChange={(event) => setCharacter(event.target.value)}>

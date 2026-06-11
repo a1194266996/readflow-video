@@ -26,6 +26,7 @@ class RenderRequest(ScriptRequest):
     voice: str = "zh-CN-XiaoxiaoNeural"
     with_tts: bool = True
     animated: bool = True
+    ai_engine: str = "template"
     visual_style: str = "story"
     character: str = "presenter"
     karaoke: bool = True
