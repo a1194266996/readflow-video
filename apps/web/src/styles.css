@@ -106,6 +106,57 @@ select {
   color: #065f46;
 }
 
+.meter-panel {
+  border-top: 1px solid #ddd6c8;
+  display: grid;
+  gap: 12px;
+  padding-top: 14px;
+}
+
+.meter {
+  display: grid;
+  gap: 6px;
+}
+
+.meter div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 13px;
+}
+
+.meter span {
+  color: #475569;
+  font-weight: 700;
+}
+
+.meter strong {
+  color: #1e293b;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.meter i {
+  height: 7px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e7e1d5;
+}
+
+.meter b {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #047857;
+}
+
+.power {
+  color: #64748b;
+  font-size: 12px;
+  text-align: right;
+}
+
 .actions {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -149,7 +200,8 @@ button:disabled {
   justify-content: center;
 }
 
-.preview video {
+.preview video,
+.preview img {
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -162,10 +214,86 @@ button:disabled {
   color: #64748b;
 }
 
-.scenes {
+.side {
   display: grid;
   gap: 12px;
   align-content: start;
+}
+
+.jobs {
+  display: grid;
+  gap: 10px;
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-weight: 800;
+}
+
+.icon {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+}
+
+.job {
+  position: relative;
+  height: auto;
+  min-height: 92px;
+  display: grid;
+  justify-items: stretch;
+  align-content: start;
+  text-align: left;
+  gap: 6px;
+  padding: 12px;
+  overflow: hidden;
+}
+
+.job.active {
+  border-color: #14532d;
+  box-shadow: inset 0 0 0 1px #14532d;
+}
+
+.job strong,
+.job span,
+.job em {
+  position: relative;
+  z-index: 1;
+}
+
+.job strong {
+  font-size: 14px;
+}
+
+.job span,
+.job em {
+  color: #64748b;
+  font-size: 12px;
+  font-style: normal;
+  line-height: 1.35;
+}
+
+.job i {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 4px;
+  background: #047857;
+}
+
+.empty-list {
+  border: 1px dashed #cfc6b8;
+  border-radius: 8px;
+  padding: 18px;
+  color: #64748b;
+  text-align: center;
+}
+
+.scenes {
+  display: grid;
+  gap: 12px;
 }
 
 .scenes article {

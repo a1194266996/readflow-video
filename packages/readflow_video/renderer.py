@@ -5,6 +5,7 @@ import subprocess
 import textwrap
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any, Callable
 
 from PIL import Image, ImageDraw, ImageFont
 
@@ -27,6 +28,7 @@ class RenderOptions:
     visual_style: str = "story"
     character: str = "presenter"
     karaoke: bool = True
+    progress_callback: Callable[[dict[str, Any]], None] | None = None
 
 
 @dataclass
@@ -378,13 +380,32 @@ def _render_svd_segment(project: VideoProject, scene_index: int, work_dir: Path,
     keyframe = _render_animation_frame(project, scene_index, 0.52, options)
     keyframe_path = work_dir / f"svd_keyframe_{scene.index:02d}.png"
     keyframe.save(keyframe_path)
+    if options.progress_callback:
+        options.progress_callback(
+            {
+                "stage": "keyframe",
+                "scene_index": scene.index,
+                "message": f"已生成第 {scene.index} 个分镜关键帧",
+                "preview_path": keyframe_path,
+            }
+        )
     segment_path = work_dir / f"segment_{scene.index:02d}.mp4"
-    return render_svd_segment(
+    result = render_svd_segment(
         keyframe_path=keyframe_path,
         output_path=segment_path,
         duration=scene.duration,
         seed=scene.index * 9973,
     )
+    if options.progress_callback:
+        options.progress_callback(
+            {
+                "stage": "segment",
+                "scene_index": scene.index,
+                "message": f"已生成第 {scene.index} 个分镜视频",
+                "preview_path": result,
+            }
+        )
+    return result
 
 
 def _render_static_segment(project: VideoProject, scene_index: int, work_dir: Path) -> Path:
@@ -444,17 +465,36 @@ def render_project(project: VideoProject, options: RenderOptions) -> RenderResul
 
     scene_videos: list[Path] = []
     for i, _scene in enumerate(project.scenes):
+        if options.progress_callback:
+            options.progress_callback(
+                {
+                    "stage": "scene",
+                    "scene_index": i + 1,
+                    "message": f"正在生成第 {i + 1}/{len(project.scenes)} 个分镜",
+                }
+            )
         if options.ai_engine == "svd":
             scene_videos.append(_render_svd_segment(project, i, work_dir, options))
         elif options.animated:
             scene_videos.append(_render_animated_segment(project, i, work_dir, options))
         else:
             scene_videos.append(_render_static_segment(project, i, work_dir))
+        if options.progress_callback:
+            options.progress_callback(
+                {
+                    "stage": "scene_done",
+                    "scene_index": i + 1,
+                    "message": f"第 {i + 1}/{len(project.scenes)} 个分镜完成",
+                    "preview_path": scene_videos[-1],
+                }
+            )
 
     concat_file = work_dir / "segments.txt"
     concat_file.write_text("".join(f"file '{path.resolve().as_posix()}'\n" for path in scene_videos), encoding="utf-8")
     video_no_audio = work_dir / "video-no-audio.mp4"
     _run_ffmpeg(["-f", "concat", "-safe", "0", "-i", str(concat_file), "-c", "copy", str(video_no_audio)])
+    if options.progress_callback:
+        options.progress_callback({"stage": "concat", "message": "正在合成完整视频", "preview_path": video_no_audio})
 
     narration = "\n".join(f"{scene.title}。{scene.body}" for scene in project.scenes)
     duration = math.fsum(scene.duration for scene in project.scenes)
@@ -480,4 +520,6 @@ def render_project(project: VideoProject, options: RenderOptions) -> RenderResul
 
     srt_path = options.output_dir / f"readflow-{digest}.srt"
     _write_srt(project, srt_path)
+    if options.progress_callback:
+        options.progress_callback({"stage": "done", "message": "视频生成完成", "preview_path": output_path})
     return RenderResult(video_path=output_path, srt_path=srt_path, duration=duration)
