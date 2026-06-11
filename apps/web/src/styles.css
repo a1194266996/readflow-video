@@ -220,9 +220,60 @@ button:disabled {
   align-content: start;
 }
 
+.chat-panel,
 .jobs {
   display: grid;
   gap: 10px;
+}
+
+.chat-panel {
+  background: #fffdf8;
+  border: 1px solid #ddd6c8;
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.chat-log {
+  display: grid;
+  gap: 8px;
+  max-height: 260px;
+  overflow: auto;
+  padding-right: 2px;
+}
+
+.chat-message {
+  max-width: 92%;
+  border-radius: 8px;
+  padding: 9px 11px;
+  font-size: 13px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+
+.chat-message.assistant {
+  justify-self: start;
+  background: #eef4f1;
+  color: #102a43;
+}
+
+.chat-message.user {
+  justify-self: end;
+  background: #14532d;
+  color: #ffffff;
+}
+
+.chat-input {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 34px;
+  gap: 8px;
+  align-items: end;
+}
+
+.chat-input textarea {
+  min-height: 64px;
+  max-height: 120px;
+  padding: 10px 11px;
+  font-size: 13px;
 }
 
 .section-title {

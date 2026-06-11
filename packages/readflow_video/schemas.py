@@ -26,6 +26,14 @@ class PromptOptimizeRequest(BaseModel):
     style: str = "short-video"
 
 
+class AssistantChatRequest(BaseModel):
+    message: str
+    session_id: str | None = None
+    prompt: str = ""
+    project: VideoProject | None = None
+    style: str = "short-video"
+
+
 class RenderRequest(ScriptRequest):
     project: VideoProject | None = None
     voice: str = "zh-CN-XiaoxiaoNeural"

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Bot, FileText, Play, RefreshCw, WandSparkles } from "lucide-react";
+import { Bot, FileText, MessageCircle, Play, RefreshCw, Send, WandSparkles } from "lucide-react";
 import { createRoot } from "react-dom/client";
 import "./styles.css";
 
@@ -74,6 +74,11 @@ type RenderJob = {
   updated_at: string;
 };
 
+type ChatMessage = {
+  role: "user" | "assistant";
+  content: string;
+};
+
 function App() {
   const [prompt, setPrompt] = useState("帮我生成一个猫和老鼠打架的视频");
   const [project, setProject] = useState<Project | null>(null);
@@ -87,6 +92,14 @@ function App() {
   const [systemStatus, setSystemStatus] = useState<SystemStatus | null>(null);
   const [jobs, setJobs] = useState<RenderJob[]>([]);
   const [selectedJobId, setSelectedJobId] = useState("");
+  const [chatSessionId, setChatSessionId] = useState("");
+  const [chatInput, setChatInput] = useState("帮我把这个主题做成一个连续短视频系列，角色和画风要统一");
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
+    {
+      role: "assistant",
+      content: "我是你的 AI 导演。你可以告诉我想要的受众、风格、角色和连续剧情，我会帮你打磨文案、分镜和 Wan2.2 提示词。",
+    },
+  ]);
 
   async function loadAiStatus() {
     fetch(`${API}/api/ai/status`)
@@ -151,6 +164,49 @@ function App() {
       setProject(data.project);
     } catch (exc) {
       setError(exc instanceof Error ? exc.message : "AI 导演暂时不可用");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function sendChatMessage() {
+    const content = chatInput.trim();
+    if (!content) {
+      return;
+    }
+    setBusy(true);
+    setError("");
+    setChatInput("");
+    setChatMessages((messages) => [...messages, { role: "user", content }]);
+    try {
+      const res = await fetch(`${API}/api/assistant/chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          session_id: chatSessionId || null,
+          message: content,
+          prompt,
+          project,
+          style: "short-video",
+        }),
+      });
+      if (!res.ok) {
+        const detail = await res.json().catch(() => ({}));
+        throw new Error(detail.detail || "AI 导演暂时不可用");
+      }
+      const data = await res.json();
+      setChatSessionId(data.session_id);
+      setChatMessages((messages) => [...messages, { role: "assistant", content: data.reply }]);
+      if (data.project) {
+        setProject(data.project);
+        setPrompt(data.project.prompt || data.optimized_prompt || prompt);
+      } else if (data.optimized_prompt) {
+        setPrompt(data.optimized_prompt);
+      }
+    } catch (exc) {
+      const message = exc instanceof Error ? exc.message : "AI 导演暂时不可用";
+      setError(message);
+      setChatMessages((messages) => [...messages, { role: "assistant", content: message }]);
     } finally {
       setBusy(false);
     }
@@ -301,6 +357,35 @@ function App() {
           </div>
 
           <div className="side">
+            <section className="chat-panel">
+              <div className="section-title">
+                <span>AI 导演对话</span>
+                <MessageCircle size={16} />
+              </div>
+              <div className="chat-log">
+                {chatMessages.map((message, index) => (
+                  <div className={`chat-message ${message.role}`} key={`${message.role}-${index}`}>
+                    {message.content}
+                  </div>
+                ))}
+              </div>
+              <div className="chat-input">
+                <textarea
+                  value={chatInput}
+                  onChange={(event) => setChatInput(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
+                      event.preventDefault();
+                      sendChatMessage().catch(() => undefined);
+                    }
+                  }}
+                />
+                <button className="icon" onClick={sendChatMessage} disabled={busy || !llmStatus?.ready}>
+                  <Send size={16} />
+                </button>
+              </div>
+            </section>
+
             <section className="jobs">
               <div className="section-title">
                 <span>生成任务</span>

@@ -10,9 +10,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from readflow_video.ai_video import get_ai_video_status
-from readflow_video.llm import get_llm_status, optimize_video_prompt
+from readflow_video.llm import chat_video_director, get_llm_status, optimize_video_prompt
 from readflow_video.renderer import RenderOptions, render_project
-from readflow_video.schemas import PromptOptimizeRequest, RenderRequest, ScriptRequest, VideoProject
+from readflow_video.schemas import AssistantChatRequest, PromptOptimizeRequest, RenderRequest, ScriptRequest, VideoProject
 from readflow_video.script import generate_script
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -22,6 +22,8 @@ OUTPUTS.mkdir(parents=True, exist_ok=True)
 
 JOBS: dict[str, dict] = {}
 JOBS_LOCK = Lock()
+CHAT_SESSIONS: dict[str, list[dict[str, str]]] = {}
+CHAT_LOCK = Lock()
 EXECUTOR = ThreadPoolExecutor(max_workers=1)
 
 app = FastAPI(title="Readflow Video API", version="0.1.0")
@@ -153,6 +155,36 @@ def optimize_prompt(request: PromptOptimizeRequest):
         "optimized_prompt": optimized["optimized_prompt"],
         "negative_prompt": optimized["negative_prompt"],
         "project": project,
+    }
+
+
+@app.post("/api/assistant/chat")
+def assistant_chat(request: AssistantChatRequest):
+    session_id = request.session_id or uuid4().hex
+    with CHAT_LOCK:
+        history = list(CHAT_SESSIONS.get(session_id, []))
+    try:
+        result = chat_video_director(
+            history=history,
+            message=request.message,
+            prompt=request.prompt,
+            project=request.project.model_dump() if request.project else None,
+            style=request.style,
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail=f"LLM is not available: {exc}") from exc
+
+    with CHAT_LOCK:
+        updated = [*history, {"role": "user", "content": request.message}, {"role": "assistant", "content": result["reply"]}]
+        CHAT_SESSIONS[session_id] = updated[-16:]
+
+    project = VideoProject(**result["project"]) if result.get("project") else None
+    return {
+        "session_id": session_id,
+        "reply": result["reply"],
+        "optimized_prompt": result.get("optimized_prompt") or "",
+        "project": project,
+        "suggestions": result.get("suggestions") or [],
     }
 
 
