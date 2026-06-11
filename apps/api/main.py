@@ -10,8 +10,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from readflow_video.ai_video import get_ai_video_status
+from readflow_video.llm import get_llm_status, optimize_video_prompt
 from readflow_video.renderer import RenderOptions, render_project
-from readflow_video.schemas import RenderRequest, ScriptRequest
+from readflow_video.schemas import PromptOptimizeRequest, RenderRequest, ScriptRequest, VideoProject
 from readflow_video.script import generate_script
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -128,6 +129,31 @@ def create_script(request: ScriptRequest):
 @app.get("/api/ai/status")
 def ai_status():
     return get_ai_video_status()
+
+
+@app.get("/api/llm/status")
+def llm_status():
+    return get_llm_status()
+
+
+@app.post("/api/assistant/optimize")
+def optimize_prompt(request: PromptOptimizeRequest):
+    try:
+        optimized = optimize_video_prompt(prompt=request.prompt, style=request.style)
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail=f"LLM is not available: {exc}") from exc
+    project = VideoProject(
+        title=optimized["title"],
+        prompt=optimized["optimized_prompt"],
+        style=request.style,
+        scenes=optimized["scenes"],
+    )
+    return {
+        "title": optimized["title"],
+        "optimized_prompt": optimized["optimized_prompt"],
+        "negative_prompt": optimized["negative_prompt"],
+        "project": project,
+    }
 
 
 @app.get("/api/system/status")

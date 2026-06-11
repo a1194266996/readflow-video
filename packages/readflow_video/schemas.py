@@ -21,12 +21,17 @@ class ScriptRequest(BaseModel):
     style: str = "小红书干货"
 
 
+class PromptOptimizeRequest(BaseModel):
+    prompt: str
+    style: str = "short-video"
+
+
 class RenderRequest(ScriptRequest):
     project: VideoProject | None = None
     voice: str = "zh-CN-XiaoxiaoNeural"
     with_tts: bool = True
     animated: bool = True
-    ai_engine: str = "svd"
+    ai_engine: str = "wan"
     visual_style: str = "story"
     character: str = "presenter"
     karaoke: bool = True

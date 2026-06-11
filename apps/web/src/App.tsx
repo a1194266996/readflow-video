@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { FileText, Play, RefreshCw, WandSparkles } from "lucide-react";
+import { Bot, FileText, Play, RefreshCw, WandSparkles } from "lucide-react";
 import { createRoot } from "react-dom/client";
 import "./styles.css";
 
@@ -32,6 +32,14 @@ type AiStatus = {
   model: string;
   reason?: string;
   device?: string | null;
+};
+
+type LlmStatus = {
+  ready: boolean;
+  provider: string;
+  base_url: string;
+  model: string;
+  reason?: string;
 };
 
 type SystemStatus = {
@@ -67,22 +75,32 @@ type RenderJob = {
 };
 
 function App() {
-  const [prompt, setPrompt] = useState("30岁以后一定要明白的5个人生道理");
+  const [prompt, setPrompt] = useState("帮我生成一个猫和老鼠打架的视频");
   const [project, setProject] = useState<Project | null>(null);
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
   const [character, setCharacter] = useState("presenter");
   const [karaoke, setKaraoke] = useState(true);
   const [aiEngine, setAiEngine] = useState("wan");
   const [aiStatus, setAiStatus] = useState<AiStatus | null>(null);
+  const [llmStatus, setLlmStatus] = useState<LlmStatus | null>(null);
   const [systemStatus, setSystemStatus] = useState<SystemStatus | null>(null);
   const [jobs, setJobs] = useState<RenderJob[]>([]);
   const [selectedJobId, setSelectedJobId] = useState("");
 
-  useEffect(() => {
+  async function loadAiStatus() {
     fetch(`${API}/api/ai/status`)
       .then((res) => res.json())
       .then(setAiStatus)
       .catch(() => setAiStatus(null));
+    fetch(`${API}/api/llm/status`)
+      .then((res) => res.json())
+      .then(setLlmStatus)
+      .catch(() => setLlmStatus(null));
+  }
+
+  useEffect(() => {
+    loadAiStatus().catch(() => undefined);
   }, []);
 
   async function loadJobs() {
@@ -115,8 +133,32 @@ function App() {
   const previewUrl = selectedJob?.video_url || selectedJob?.preview_url;
   const isVideoPreview = Boolean(previewUrl?.endsWith(".mp4"));
 
+  async function optimizePrompt() {
+    setBusy(true);
+    setError("");
+    try {
+      const res = await fetch(`${API}/api/assistant/optimize`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt, style: "short-video" }),
+      });
+      if (!res.ok) {
+        const detail = await res.json().catch(() => ({}));
+        throw new Error(detail.detail || "AI 导演暂时不可用");
+      }
+      const data = await res.json();
+      setPrompt(data.optimized_prompt);
+      setProject(data.project);
+    } catch (exc) {
+      setError(exc instanceof Error ? exc.message : "AI 导演暂时不可用");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function generateScript() {
     setBusy(true);
+    setError("");
     try {
       const sceneCount = aiEngine === "wan" ? 3 : aiEngine === "svd" ? 3 : 6;
       const res = await fetch(`${API}/api/script`, {
@@ -132,6 +174,7 @@ function App() {
 
   async function renderVideo() {
     setBusy(true);
+    setError("");
     try {
       const renderProject = aiEngine === "wan" && project
         ? { ...project, scenes: project.scenes.slice(0, 1) }
@@ -181,6 +224,12 @@ function App() {
                 {aiStatus.ready ? `${aiEngine.toUpperCase()} 就绪：${aiStatus.device}` : `${aiEngine.toUpperCase()} 未就绪：${aiStatus.reason}`}
               </div>
             )}
+            {llmStatus && (
+              <div className={llmStatus.ready ? "status ready" : "status"}>
+                {llmStatus.ready ? `AI 导演就绪：${llmStatus.model}` : `AI 导演未就绪：${llmStatus.reason}`}
+              </div>
+            )}
+            {error && <div className="status">{error}</div>}
             <label>
               角色
               <select value={character} onChange={(event) => setCharacter(event.target.value)}>
@@ -194,6 +243,10 @@ function App() {
             </label>
           </div>
           <div className="actions">
+            <button onClick={optimizePrompt} disabled={busy || !llmStatus?.ready}>
+              <Bot size={18} />
+              AI 优化
+            </button>
             <button onClick={generateScript} disabled={busy}>
               <FileText size={18} />
               生成文案

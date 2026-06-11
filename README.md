@@ -94,6 +94,51 @@ export HF_ENDPOINT=https://hf-mirror.com
 
 If CUDA is unavailable, use the `template` engine until the NVIDIA driver is fixed.
 
+## Optional LLM Director
+
+The web UI can call an OpenAI-compatible chat model from the FastAPI backend. Use
+this for prompt rewriting, shot planning, and Wan2.2 prompt optimization. Never put
+LLM API keys in the frontend.
+
+Recommended local model for RTX 4090/4090D 24GB:
+
+```text
+Qwen3-14B-128K-Q4_K_M.gguf
+```
+
+Practical 24GB guidance:
+
+```text
+7B/8B Q4/Q5: very easy, fast, plenty of VRAM left
+14B Q4_K_M/Q5_K_M: recommended balance for this app
+32B Q4_K_M: possible, but tight when Wan2.2 is also running
+70B Q4: not recommended on a single 24GB GPU
+```
+
+Example local llama.cpp server:
+
+```bash
+cd /data1/home/llw/AI/tools/llama.cpp
+./build/bin/llama-server \
+  -m /data1/home/llw/AI/models/Qwen3-14B-GGUF/Qwen3-14B-128K-Q4_K_M.gguf \
+  --host 127.0.0.1 \
+  --port 8020 \
+  --ctx-size 8192 \
+  --n-gpu-layers 99
+```
+
+Backend environment:
+
+```bash
+export READFLOW_LLM_BASE_URL=http://127.0.0.1:8020/v1
+export READFLOW_LLM_MODEL=qwen3-14b-q4
+export READFLOW_LLM_API_KEY=not-needed
+```
+
+For hosted providers such as DeepSeek or DashScope/Qwen, point
+`READFLOW_LLM_BASE_URL`, `READFLOW_LLM_MODEL`, and `READFLOW_LLM_API_KEY` at their
+OpenAI-compatible endpoint instead.
+
 ## Frontend
 
 ```bash
